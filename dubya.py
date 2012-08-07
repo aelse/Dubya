@@ -1,13 +1,40 @@
+import os
+import re
 import sys
 import time
 import optparse
+import textwrap
+from hashlib import md5
 from ConfigParser import SafeConfigParser
 
-def gen_dubya_images():
-    cmd = 'convert -background black -fill white -font code/personal/eplfl/site_python/fonts/Helvetica.ttf -density 90 -pointsize 40 label:"%s"'
-    dubya_quotes = []
-    for quote in dubya_quotes:
-        pass
+def generate_quote_image(quote, imagefile, text_col, bg_col, font):
+    print 'gen ===> %s' % quote
+    quote = '\n'.join(textwrap.wrap(quote, 25))
+    quote = re.sub('"', '\\"', quote)
+
+    cmd = 'convert -background %s -fill %s -font %s -density 90 -pointsize 40 label:"%s" %s' % (bg_col, text_col, font, quote, imagefile)
+    os.system(cmd)
+
+def build_image_cache(quotes, conf):
+    """Take a list of quotes and return a list of image files
+    corresponding to those quotes"""
+
+    cache_dir = conf['Dubya']['cache_dir']
+    if not os.path.exists(cache_dir):
+        os.makedirs(cache_dir)
+
+    # TODO preset / check this
+    text_col = conf['Dubya']['text_colour']
+    bg_col = conf['Dubya']['bg_colour']
+    font = conf['Dubya']['font']
+
+    quote_images = []
+
+    for quote in quotes:
+        h = md5('%s-%s-%s' % (text_col, bg_col, quote))
+        imagefile = '%s/dubya-%s.png' % (cache_dir, h.hexdigest()[:8])
+        generate_quote_image(quote, imagefile, text_col, bg_col, font)
+        quote_images.append(imagefile)
 
 def parse_options():
     p = optparse.OptionParser()
@@ -21,9 +48,10 @@ def parse_options():
 def gen_config():
     """Generate a sample configuration
     """
+
     c = SafeConfigParser()
     c.add_section('Dubya')
-    c.set("Dubya", "quotes", "quotes.txt")
+    c.set("Dubya", "quotes_file", "quotes.txt")
     c.set("Dubya", "match_phrase", "WMD")
     c.set("Dubya", "font", "Helvetica")
     c.set("Dubya", "text_colour", "white")
@@ -35,6 +63,24 @@ def gen_config():
     c.set("Campfire", "room", "Yeehaw Texas")
     c.write(sys.stdout)
 
+def process_config(filename):
+    p = SafeConfigParser()
+    conf = {}
+    try:
+        p.read(filename)
+    except:
+        print "Could not read file %s" % filename
+
+    conf['Dubya'] = {}
+    conf['Dubya']['cache_dir'] = "/tmp/dubya_cache"
+    conf['Dubya']['quotes_file'] = "quotes.txt"
+
+    for section in p.sections():
+        for (name, value) in p.items(section):
+            if not conf.has_key(section):
+                conf[section] = {}
+            conf[section][name] = value
+    return conf
 
 def main():
     options = parse_options()
@@ -43,7 +89,28 @@ def main():
         gen_config()
         return 0
 
-    print 'first arg %s' % argv[1]
+    # Read from the configuration file
+    config_file = "dubya.cfg"
+    if options.config_file:
+        config_file = options.config_file
+    if not os.path.exists(config_file):
+        print 'No such config file "%s"' % config_file
+        print 'Run "%s -g" to output a sample configuration.' % sys.argv[0]
+        return 1
+    conf = process_config(config_file)
+
+    cache_dir = conf['Dubya']['cache_dir']
+    quotes_file = conf['Dubya']['quotes_file']
+    if not os.path.exists(quotes_file):
+        print 'No such quotes file "%s"' % config_file
+        print 'Create it with one quote per line.'
+        return 1
+    f = open(quotes_file, "r")
+    quotes = f.readlines()
+    f.close()
+
+    build_image_cache(quotes, conf)
+
     return 0
 
 if __name__ == '__main__':
