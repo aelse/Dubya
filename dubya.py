@@ -11,7 +11,20 @@ def generate_quote_image(quote, imagefile, text_col, bg_col, font):
     quote = '\n'.join(textwrap.wrap(quote, 25))
     quote = re.sub('"', '\\"', quote)
 
-    cmd = 'convert -background %s -fill %s -border 20x20 -bordercolor %s -font %s -density 90 -pointsize %d label:"%s" %s' % (bg_col, text_col, bg_col, font, 40, quote, imagefile)
+    # Create "smart quote" images in a larger font size
+    helpers = {'/tmp/q1.png': u'\\u201c', '/tmp/q2.png': u'\\u201d'}
+    for f, c in helpers.items():
+        if not os.path.exists(f):
+            # Hack to get around inability to pass unicode to shell
+            # http://www.imagemagick.org/Usage/text/#unicode
+            cmd = 'env LC_CTYPE=en_AU.utf8 printf "%s" | convert -background %s -fill %s -font %s -density 90 -pointsize %d label:@- %s' % (c, bg_col, text_col, font, 70, f)
+            os.system(cmd)
+
+    cmd = 'convert -background %s -fill %s -border 10x10 -bordercolor %s -font %s -density 90 -pointsize %d label:"%s" %s' % (bg_col, text_col, bg_col, font, 40, quote, imagefile)
+    os.system(cmd)
+    cmd = u'convert -background %s /tmp/q1.png %s +append /tmp/dubyatmp.png' % (bg_col, imagefile)
+    os.system(cmd)
+    cmd = u'convert -background %s -bordercolor %s /tmp/dubyatmp.png -border 0x20 -gravity south /tmp/q2.png +append -border 20x0 %s' % (bg_col, bg_col, imagefile)
     os.system(cmd)
 
 def build_image_cache(quotes, conf):
