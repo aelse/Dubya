@@ -8,11 +8,10 @@ from hashlib import md5
 from ConfigParser import SafeConfigParser
 
 def generate_quote_image(quote, imagefile, text_col, bg_col, font):
-    print 'gen ===> %s' % quote
     quote = '\n'.join(textwrap.wrap(quote, 25))
     quote = re.sub('"', '\\"', quote)
 
-    cmd = 'convert -background %s -fill %s -font %s -density 90 -pointsize 40 label:"%s" %s' % (bg_col, text_col, font, quote, imagefile)
+    cmd = 'convert -background %s -fill %s -border 20x20 -bordercolor %s -font %s -density 90 -pointsize %d label:"%s" %s' % (bg_col, text_col, bg_col, font, 40, quote, imagefile)
     os.system(cmd)
 
 def build_image_cache(quotes, conf):
