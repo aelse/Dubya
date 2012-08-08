@@ -9,6 +9,7 @@ from ConfigParser import SafeConfigParser
 
 def generate_quote_image(quote, imagefile, text_col, bg_col, font):
     quote = '\n'.join(textwrap.wrap(quote, 25))
+    quote = re.sub('!', '\\!', quote)
     quote = re.sub('"', '\\"', quote)
 
     # Create "smart quote" images in a larger font size
